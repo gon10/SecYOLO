@@ -157,13 +157,12 @@ public class Library {
 			}).start();
 
 		}
-		
+
 		synchronized (ackList) {
 			while(ackList.size() <= ((NUM_SRVS + F) / 2)){
 				ackList.wait();
 			}
 		}
-		
 		return getFinalResponseToWrite();
 	}
 

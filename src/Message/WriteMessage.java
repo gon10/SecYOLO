@@ -95,7 +95,6 @@ public class WriteMessage extends Message {
 	
 	@Override
 	public byte[] getBytes() {
-		System.out.println("filho");
 		
 		byte[] bytesBlocks = null;
 		byte[] bytesArrayOfHashIds = null;

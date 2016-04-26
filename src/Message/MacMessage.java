@@ -26,7 +26,6 @@ public class MacMessage extends Message{
 		     sha256_HMAC.init(secret_key);
 
 		     mac = sha256_HMAC.doFinal(message);
-		     System.out.println(mac);
 		    }
 		    catch (Exception e){
 		     System.out.println("Error");
