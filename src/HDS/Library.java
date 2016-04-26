@@ -66,8 +66,10 @@ public class Library {
 		//
 		
 		FSInitMessage message = new FSInitMessage(id, keyPair.getPublic());
+		
+		MacMessage macMessage = new MacMessage(message);
 
-		broadcastMessage(message);
+		broadcastMessage(macMessage);
 
 		return id;
 	}

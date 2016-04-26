@@ -3,7 +3,7 @@ package Message;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
-public class MacMessage {
+public class MacMessage extends Message{
 	
 	
 	private Message msg;

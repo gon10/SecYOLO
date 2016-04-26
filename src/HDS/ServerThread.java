@@ -24,6 +24,7 @@ import Block.ContentHashBlock;
 import Block.PublicKeyBlock;
 import Message.FSInitMessage;
 import Message.FileCorruptMessage;
+import Message.MacMessage;
 import Message.Message;
 import Message.ReadMessage;
 import Message.ReadResponseMessage;
@@ -57,12 +58,23 @@ public class ServerThread extends Thread {
 				switch (message.getClass().toString()) {
 				case "class Message.FSInitMessage":
 					//System.out.println(blockServer.getMyPort() + ": INIT");
-					FSInitMessage fsInitMessage = (FSInitMessage) message;
-					myId = fsInitMessage.getId();
-					clientPublicKey = fsInitMessage.getPublicKey();
-					PublicKeyBlock publicKeyBlock = new PublicKeyBlock(myId, clientPublicKey);
-					blockServer.addBlockToMap(publicKeyBlock);
-					break;
+					
+					MacMessage mac = (MacMessage) message;
+										
+					FSInitMessage fsInitMessage = (FSInitMessage) mac.getMsg();
+					
+					if(Arrays.equals(fsInitMessage.getBytes(), mac.getBytes())){
+						
+						myId = fsInitMessage.getId();
+						clientPublicKey = fsInitMessage.getPublicKey();
+						PublicKeyBlock publicKeyBlock = new PublicKeyBlock(myId, clientPublicKey);
+						blockServer.addBlockToMap(publicKeyBlock);
+						break;
+					}
+					else{
+						System.out.println("deu merda no fsinit");
+					}
+					
 
 				case "class Message.WriteMessage":
 					
