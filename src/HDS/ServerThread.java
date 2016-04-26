@@ -79,7 +79,14 @@ public class ServerThread extends Thread {
 
 				case "class Message.WriteMessage":
 
-					WriteMessage writeMessage = (WriteMessage) message;
+					//WriteMessage writeMessage = (WriteMessage) message;
+					
+					MacMessage macMessage = (MacMessage) message;
+					
+					WriteMessage writeMessage = (WriteMessage) macMessage.getMsg();
+					byte[] writeMessageBytes = writeMessage.getBytes();
+					
+					
 					byte[] originalHash = decipherSignature(writeMessage.getSignatureOfArrayIds(), writeMessage.getPublicKey());
 					byte[] newHash = generateHash(convertArrayListInBytes(writeMessage.getArrayOfHashIds()));
 
@@ -88,7 +95,8 @@ public class ServerThread extends Thread {
 
 					//Check the integrity of the ArrayList that contains only the Id's of the HashBlocks
 					//In case of failing the integrity it will send a corrupt File Message with true [arrayList<String>]
-					if(!Arrays.equals(originalHash, newHash) || !Arrays.equals(originalWts, wtsInClear) ){
+					if(!Arrays.equals(originalHash, newHash) || !Arrays.equals(originalWts, wtsInClear) 
+							|| !Arrays.equals(macMessage.getMac(), writeMessageBytes)){
 						objectOutputStream.writeObject(new FileCorruptMessage(true));
 						objectOutputStream.flush();
 						objectOutputStream.reset();
@@ -126,12 +134,12 @@ public class ServerThread extends Thread {
 				case "class Message.ReadMessage":
 					System.out.println(blockServer.getMyPort() + ": READMESSAGE");
 					//ReadMessage readMessage = (ReadMessage) message;
-					MacMessage macMessage = (MacMessage) message;
+					MacMessage macMessage1 = (MacMessage) message;
 
-					ReadMessage readMessage = (ReadMessage) macMessage.getMsg();
+					ReadMessage readMessage = (ReadMessage) macMessage1.getMsg();
 					byte[] readMessageBytes = readMessage.getBytes();
 
-					if(Arrays.equals(macMessage.getMac(), readMessageBytes)){
+					if(Arrays.equals(macMessage1.getMac(), readMessageBytes)){
 
 
 						String idToRead = readMessage.getFileId();

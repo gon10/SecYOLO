@@ -106,7 +106,10 @@ public class Library {
 		WriteMessage message = new WriteMessage(contentHashBlocks, arrayOfHashIds, signatureOfArrayIds, 
 				wts, signatureOfWts,keyPair.getPublic());
 
-		broadcastMessage(message);
+		MacMessage macMessage = new MacMessage(message);
+		
+		
+		broadcastMessage(macMessage);
 
 		for (Connection c : connections) {
 			new Thread(new Runnable() {
