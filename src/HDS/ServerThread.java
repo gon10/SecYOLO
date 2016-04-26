@@ -73,6 +73,7 @@ public class ServerThread extends Thread {
 					}
 					else{
 						System.out.println("o filipe odeia-me!!!!");
+						System.out.println("Meita para isto fodass!!");
 					}
 					
 
