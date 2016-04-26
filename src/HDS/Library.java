@@ -275,7 +275,10 @@ public class Library {
 		rid++;
 		readList.clear();
 		ReadMessage message = new ReadMessage(id, pos, size, rid);
-		broadcastMessage(message);
+		
+		MacMessage macMessage = new MacMessage(message);
+		
+		broadcastMessage(macMessage);
 		
 		for (Connection c : connections) {
 			new Thread(new Runnable() {

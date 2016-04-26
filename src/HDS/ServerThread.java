@@ -58,13 +58,13 @@ public class ServerThread extends Thread {
 				switch (message.getClass().toString()) {
 				case "class Message.FSInitMessage":
 					//System.out.println(blockServer.getMyPort() + ": INIT");
-					
+
 					MacMessage mac = (MacMessage) message;
-										
+
 					FSInitMessage fsInitMessage = (FSInitMessage) mac.getMsg();
-					
+
 					if(Arrays.equals(fsInitMessage.getBytes(), mac.getBytes())){
-						
+
 						myId = fsInitMessage.getId();
 						clientPublicKey = fsInitMessage.getPublicKey();
 						PublicKeyBlock publicKeyBlock = new PublicKeyBlock(myId, clientPublicKey);
@@ -75,17 +75,17 @@ public class ServerThread extends Thread {
 						System.out.println("o filipe odeia-me!!!!");
 						System.out.println("Meita para isto fodass!!");
 					}
-					
+
 
 				case "class Message.WriteMessage":
-					
+
 					WriteMessage writeMessage = (WriteMessage) message;
 					byte[] originalHash = decipherSignature(writeMessage.getSignatureOfArrayIds(), writeMessage.getPublicKey());
 					byte[] newHash = generateHash(convertArrayListInBytes(writeMessage.getArrayOfHashIds()));
-					
+
 					byte[] originalWts = decipherSignature(writeMessage.getSignatureOfWts(), writeMessage.getPublicKey());
 					byte[] wtsInClear = generateHash(Integer.toString(writeMessage.getWts()).getBytes());
-					
+
 					//Check the integrity of the ArrayList that contains only the Id's of the HashBlocks
 					//In case of failing the integrity it will send a corrupt File Message with true [arrayList<String>]
 					if(!Arrays.equals(originalHash, newHash) || !Arrays.equals(originalWts, wtsInClear) ){
@@ -111,11 +111,11 @@ public class ServerThread extends Thread {
 							objectOutputStream.writeObject(new FileCorruptMessage(false));
 							objectOutputStream.flush();
 							objectOutputStream.reset();
-							
+
 							byte[] bytesID = generateHash(writeMessage.getPublicKey().toString().getBytes());
 							String publicKeyBlockId = printHexBinary(bytesID);
 							int ts = blockServer.getPublicKeyBlockById(publicKeyBlockId).getTs();
-							
+
 							if(writeMessage.getWts() > ts){
 								writeBlocksToServer(writeMessage.getBlocks(), writeMessage.getArrayOfHashIds(), writeMessage.getWts(), writeMessage.getSignatureOfWts(), writeMessage.getSignatureOfArrayIds(), writeMessage.getPublicKey());
 							}
@@ -125,21 +125,30 @@ public class ServerThread extends Thread {
 
 				case "class Message.ReadMessage":
 					System.out.println(blockServer.getMyPort() + ": READMESSAGE");
-					ReadMessage readMessage = (ReadMessage) message;
+					//ReadMessage readMessage = (ReadMessage) message;
+					MacMessage macMessage = (MacMessage) message;
 
-					String idToRead = readMessage.getFileId();
-					PublicKeyBlock publicKeyBlock2 = blockServer.getPublicKeyBlockById(idToRead);
+					ReadMessage readMessage = (ReadMessage) macMessage.getMsg();
+					byte[] readMessageBytes = readMessage.getBytes();
 
-					byte[] toSend = processContent(readMessage.getPos(), readMessage.getSize(), publicKeyBlock2); 
-					//System.out.println("Is the message to send null? "+ toSend.equals(null));
-					System.out.println(blockServer.getMyPort() + ": READMESSAGE->" + toSend.length);
-					ReadResponseMessage responseMessage = new ReadResponseMessage(toSend, readMessage.getRid(), 
-							publicKeyBlock2.getTs(), publicKeyBlock2.getSignatureOfHashIds(), publicKeyBlock2.getSignatureOfTs());
-					
-					objectOutputStream.writeObject(responseMessage);
-					objectOutputStream.flush();
-					objectOutputStream.reset();
+					if(Arrays.equals(macMessage.getMac(), readMessageBytes)){
 
+
+						String idToRead = readMessage.getFileId();
+						PublicKeyBlock publicKeyBlock2 = blockServer.getPublicKeyBlockById(idToRead);
+
+						byte[] toSend = processContent(readMessage.getPos(), readMessage.getSize(), publicKeyBlock2); 
+						//System.out.println("Is the message to send null? "+ toSend.equals(null));
+						System.out.println(blockServer.getMyPort() + ": READMESSAGE->" + toSend.length);
+						ReadResponseMessage responseMessage = new ReadResponseMessage(toSend, readMessage.getRid(), 
+								publicKeyBlock2.getTs(), publicKeyBlock2.getSignatureOfHashIds(), publicKeyBlock2.getSignatureOfTs());
+
+						objectOutputStream.writeObject(responseMessage);
+						objectOutputStream.flush();
+						objectOutputStream.reset();
+					} else {
+						System.out.println("Picas para os haters");
+					}
 					break;
 
 
@@ -181,7 +190,7 @@ public class ServerThread extends Thread {
 		}
 	}
 	private byte[] processContent(int pos, int size, PublicKeyBlock publicKeyBlock2) throws IOException {
-		
+
 		byte[] contentFinal = new byte[0];
 		int indexFirstBlockToRead = pos / Server.BLOCKSIZE;
 		int actualBlockIndex = indexFirstBlockToRead;
@@ -193,12 +202,12 @@ public class ServerThread extends Thread {
 		boolean fileCorrupted = false;
 		while(actualBlockIndex <= indexLastBlockToRead){
 			try{//feito desta maneira à cão para resolver o caso de o bloco não existir ainda
-				
+
 				blockToRead = blockServer.getContentHashBlockId_block().get(publicKeyBlock2.getContentFiles().get(actualBlockIndex));
 				if(!checkBlockIntegrity(blockToRead)){
 					fileCorrupted = true;
 				}
-				
+
 			}catch(IndexOutOfBoundsException e){
 				objectOutputStream.writeObject(new FileCorruptMessage(fileCorrupted));
 				objectOutputStream.flush();
@@ -207,8 +216,8 @@ public class ServerThread extends Thread {
 			}
 			if(actualBlockIndex == indexFirstBlockToRead){
 				if(size + initialPosFirstBlock > Server.BLOCKSIZE){
-					
-					
+
+
 					byte[] contentToAdd = Arrays.copyOfRange(get(blockToRead.getId()), initialPosFirstBlock, Server.BLOCKSIZE);
 					actualSize -= contentToAdd.length;
 					byte[] finalSize  = new byte[contentFinal.length + contentToAdd.length];
@@ -227,7 +236,7 @@ public class ServerThread extends Thread {
 					objectOutputStream.reset();
 					return Arrays.copyOfRange(get(blockToRead.getId()), initialPosFirstBlock, initialPosFirstBlock + size);
 				}
-				
+
 			}
 			else if(actualBlockIndex == indexLastBlockToRead){
 				byte[] contentToAdd = Arrays.copyOfRange(get(blockToRead.getId()), 0, actualSize);
@@ -247,11 +256,11 @@ public class ServerThread extends Thread {
 				System.arraycopy(contentToAdd, 0, finalSize, contentFinal.length, contentToAdd.length);
 				contentFinal = finalSize;
 			}
-			
+
 			actualBlockIndex++;
-			
-			
-			
+
+
+
 		}
 		objectOutputStream.writeObject(new FileCorruptMessage(fileCorrupted));
 		objectOutputStream.flush();
@@ -328,15 +337,15 @@ public class ServerThread extends Thread {
 		}
 		return arrayOfHashIds;
 	}
-	
+
 	public byte[] get(String id){
 		return blockServer.getContentHashBlockId_block().get(id).getContent();			
 
 	}
-	
+
 	public boolean checkBlockIntegrity(ContentHashBlock block){
 		return block.getId().equals(printHexBinary(generateHash(block.getContent())));
 	}
-	
+
 
 }
