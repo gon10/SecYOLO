@@ -72,7 +72,7 @@ public class ServerThread extends Thread {
 						break;
 					}
 					else{
-						System.out.println("deu merda no fsinit");
+						System.out.println("o filipe odeia-me!!!!");
 					}
 					
 
