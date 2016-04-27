@@ -60,7 +60,6 @@ public class ServerThread extends Thread {
 					//System.out.println(blockServer.getMyPort() + ": INIT");
 
 
-					System.out.println("entrei no fsinit");	
 
 					FSInitMessage fsInitMessage = (FSInitMessage) macMessage.getMsg();
 
@@ -96,27 +95,26 @@ public class ServerThread extends Thread {
 					if(!Arrays.equals(originalHash, newHash) || !Arrays.equals(originalWts, wtsInClear) 
 							|| !Arrays.equals(macMessage.generateMac(), macMessage.getMac())){
 						
-						System.out.println("entrei no if manhoso");
-						objectOutputStream.writeObject(new FileCorruptMessage(true));
+						objectOutputStream.writeObject(new MacMessage(new FileCorruptMessage(true)));
 						objectOutputStream.flush();
 						objectOutputStream.reset();
 					}
 					//Otherwise, sends the array to the server and send the corrupt File Message with false
 					else{
-						objectOutputStream.writeObject(new FileCorruptMessage(false));
+						objectOutputStream.writeObject(new MacMessage(new FileCorruptMessage(false)));
 						objectOutputStream.flush();
 						objectOutputStream.reset();
 						aux = generateArrayOfHashIds(writeMessage.getBlocks());
 						//Now check if the ArrayList that contains the HashBlocks were not "edited" [arrayList<HashBlock>]
 						//In case of detecting a difference between blocks, send a corrupt File Message with true 
 						if(!compareArrayListsString(writeMessage.getArrayOfHashIds(), aux)){
-							objectOutputStream.writeObject(new FileCorruptMessage(true));
+							objectOutputStream.writeObject(new MacMessage(new FileCorruptMessage(true)));
 							objectOutputStream.flush();
 							objectOutputStream.reset();
 						}
 						//Otherwise, writeBlocksToServer
 						else{
-							objectOutputStream.writeObject(new FileCorruptMessage(false));
+							objectOutputStream.writeObject(new MacMessage(new FileCorruptMessage(false)));
 							objectOutputStream.flush();
 							objectOutputStream.reset();
 
@@ -132,7 +130,6 @@ public class ServerThread extends Thread {
 					break;
 
 				case "class Message.ReadMessage":
-					System.out.println(blockServer.getMyPort() + ": READMESSAGE");
 					//ReadMessage readMessage = (ReadMessage) message;
 
 					ReadMessage readMessage = (ReadMessage) macMessage.getMsg();
@@ -145,7 +142,6 @@ public class ServerThread extends Thread {
 
 						byte[] toSend = processContent(readMessage.getPos(), readMessage.getSize(), publicKeyBlock2); 
 						//System.out.println("Is the message to send null? "+ toSend.equals(null));
-						System.out.println(blockServer.getMyPort() + ": READMESSAGE->" + toSend.length);
 						ReadResponseMessage responseMessage = new ReadResponseMessage(toSend, readMessage.getRid(), 
 								publicKeyBlock2.getTs(), publicKeyBlock2.getSignatureOfHashIds(), publicKeyBlock2.getSignatureOfTs());
 
@@ -153,7 +149,6 @@ public class ServerThread extends Thread {
 						objectOutputStream.flush();
 						objectOutputStream.reset();
 					} else {
-						System.out.println("Picas para os haters");
 					}
 					break;
 
@@ -215,7 +210,7 @@ public class ServerThread extends Thread {
 				}
 
 			}catch(IndexOutOfBoundsException e){
-				objectOutputStream.writeObject(new FileCorruptMessage(fileCorrupted));
+				objectOutputStream.writeObject(new MacMessage(new FileCorruptMessage(fileCorrupted)));
 				objectOutputStream.flush();
 				objectOutputStream.reset();
 				return contentFinal;
@@ -233,11 +228,9 @@ public class ServerThread extends Thread {
 					contentFinal = finalSize;
 				}
 				else{
-					System.out.println(get(blockToRead.getId()).length);
-					System.out.println(initialPosFirstBlock);
+				
 					int a = initialPosFirstBlock + size;
-					System.out.println(a);
-					objectOutputStream.writeObject(new FileCorruptMessage(fileCorrupted));
+					objectOutputStream.writeObject(new MacMessage(new FileCorruptMessage(fileCorrupted)));
 					objectOutputStream.flush();
 					objectOutputStream.reset();
 					return Arrays.copyOfRange(get(blockToRead.getId()), initialPosFirstBlock, initialPosFirstBlock + size);
@@ -249,7 +242,7 @@ public class ServerThread extends Thread {
 				byte[] finalSize  = new byte[contentFinal.length + contentToAdd.length];
 				System.arraycopy(contentFinal, 0, finalSize, 0, contentFinal.length);
 				System.arraycopy(contentToAdd, 0, finalSize, contentFinal.length, contentToAdd.length);
-				objectOutputStream.writeObject(new FileCorruptMessage(fileCorrupted));
+				objectOutputStream.writeObject(new MacMessage(new FileCorruptMessage(fileCorrupted)));
 				objectOutputStream.flush();
 				objectOutputStream.reset();
 				return finalSize;
@@ -268,7 +261,7 @@ public class ServerThread extends Thread {
 
 
 		}
-		objectOutputStream.writeObject(new FileCorruptMessage(fileCorrupted));
+		objectOutputStream.writeObject(new MacMessage(new FileCorruptMessage(fileCorrupted)));
 		objectOutputStream.flush();
 		objectOutputStream.reset();
 
@@ -286,8 +279,6 @@ public class ServerThread extends Thread {
 
 		String IdfirstBlock = tempListOfBlocks.get(indexOfFirstBlock);
 		byte[] firstBlock = blockServer.getContentHashBlockId_block().get(IdfirstBlock).getContent();
-		System.out.println("Is content retrieved from server null? " + firstBlock.equals(null));
-		System.out.println(new String(firstBlock, "UTF-8"));
 		return firstBlock;
 	}
 

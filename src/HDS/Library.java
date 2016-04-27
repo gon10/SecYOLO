@@ -4,6 +4,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.lang.reflect.Array;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.InvalidKeyException;
@@ -101,8 +102,6 @@ public class Library {
 		byte[] signatureOfArrayIds = signContent(convertArrayListInBytes(arrayOfHashIds));
 		byte[] signatureOfWts = signContent(Integer.toString(wts).getBytes());
 		
-		System.out.println("size of sign->" + signatureOfWts.length);
-
 		WriteMessage message = new WriteMessage(contentHashBlocks, arrayOfHashIds, signatureOfArrayIds, 
 				wts, signatureOfWts,keyPair.getPublic());
 
@@ -116,11 +115,15 @@ public class Library {
 
 				@Override
 				public void run() {
-					FileCorruptMessage m;
+					MacMessage macMessage;
+					FileCorruptMessage fileCorruptMessage;
 					try {
-						m = (FileCorruptMessage) c.getOis().readObject();
+						macMessage = (MacMessage) c.getOis().readObject();
+						fileCorruptMessage = (FileCorruptMessage) macMessage.getMsg();
+						
+						
 
-						if (m.isCorrupted()) {
+						if (fileCorruptMessage.isCorrupted() || Arrays.equals(macMessage.generateMac(), macMessage.getMac())) {
 							synchronized (ackList) {
 								ackList.add(false);
 								ackList.notify();
@@ -129,11 +132,17 @@ public class Library {
 						} else {
 							// Verifica se a 2ª mensagem que verifica mesmo os HashBlocks está
 							// corrupta
+							
+							MacMessage macMessage2;
+
+							macMessage2 = (MacMessage) c.getOis().readObject();
+							
+							
 							FileCorruptMessage hashBlockCorruptMessage;
 
-							hashBlockCorruptMessage = (FileCorruptMessage) c.getOis().readObject();
+							hashBlockCorruptMessage = (FileCorruptMessage) macMessage2.getMsg();
 
-							if (!hashBlockCorruptMessage.isCorrupted())
+							if (!hashBlockCorruptMessage.isCorrupted() || Arrays.equals(macMessage2.getMac(),macMessage2.generateMac()))
 								synchronized (ackList) {
 									ackList.add(true);
 									ackList.notify();
@@ -287,11 +296,13 @@ public class Library {
 
 				@Override
 				public void run() {
+					MacMessage macMessage2; 
 					FileCorruptMessage m;
 					try {
-						m = (FileCorruptMessage) c.getOis().readObject();
+						macMessage2 = (MacMessage) c.getOis().readObject();
+						m = (FileCorruptMessage) macMessage2.getMsg();
 
-						if (m.isCorrupted()) {
+						if (m.isCorrupted() || Arrays.equals(macMessage2.generateMac(), macMessage2.getMac())) {
 							if(m.isCorrupted()){
 								System.out.println("FILE IS CORRUPTED");
 							}
