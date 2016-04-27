@@ -90,31 +90,33 @@ public class ServerThread extends Thread {
 					byte[] originalWts = decipherSignature(writeMessage.getSignatureOfWts(), writeMessage.getPublicKey());
 					byte[] wtsInClear = generateHash(Integer.toString(writeMessage.getWts()).getBytes());
 
+					
+					
 					//Check the integrity of the ArrayList that contains only the Id's of the HashBlocks
 					//In case of failing the integrity it will send a corrupt File Message with true [arrayList<String>]
 					if(!Arrays.equals(originalHash, newHash) || !Arrays.equals(originalWts, wtsInClear) 
 							|| !Arrays.equals(macMessage.generateMac(), macMessage.getMac())){
 						
-						objectOutputStream.writeObject(new MacMessage(new FileCorruptMessage(true)));
+						objectOutputStream.writeObject(new MacMessage(new FileCorruptMessage(true,writeMessage.getWts())));
 						objectOutputStream.flush();
 						objectOutputStream.reset();
 					}
 					//Otherwise, sends the array to the server and send the corrupt File Message with false
 					else{
-						objectOutputStream.writeObject(new MacMessage(new FileCorruptMessage(false)));
+						objectOutputStream.writeObject(new MacMessage(new FileCorruptMessage(false,writeMessage.getWts())));
 						objectOutputStream.flush();
 						objectOutputStream.reset();
 						aux = generateArrayOfHashIds(writeMessage.getBlocks());
 						//Now check if the ArrayList that contains the HashBlocks were not "edited" [arrayList<HashBlock>]
 						//In case of detecting a difference between blocks, send a corrupt File Message with true 
 						if(!compareArrayListsString(writeMessage.getArrayOfHashIds(), aux)){
-							objectOutputStream.writeObject(new MacMessage(new FileCorruptMessage(true)));
+							objectOutputStream.writeObject(new MacMessage(new FileCorruptMessage(true,writeMessage.getWts())));
 							objectOutputStream.flush();
 							objectOutputStream.reset();
 						}
 						//Otherwise, writeBlocksToServer
 						else{
-							objectOutputStream.writeObject(new MacMessage(new FileCorruptMessage(false)));
+							objectOutputStream.writeObject(new MacMessage(new FileCorruptMessage(false,writeMessage.getWts())));
 							objectOutputStream.flush();
 							objectOutputStream.reset();
 
@@ -144,8 +146,10 @@ public class ServerThread extends Thread {
 						//System.out.println("Is the message to send null? "+ toSend.equals(null));
 						ReadResponseMessage responseMessage = new ReadResponseMessage(toSend, readMessage.getRid(), 
 								publicKeyBlock2.getTs(), publicKeyBlock2.getSignatureOfHashIds(), publicKeyBlock2.getSignatureOfTs());
+						
+						MacMessage macMessage2 = new MacMessage(responseMessage);
 
-						objectOutputStream.writeObject(responseMessage);
+						objectOutputStream.writeObject(macMessage2);
 						objectOutputStream.flush();
 						objectOutputStream.reset();
 					} else {
@@ -261,7 +265,7 @@ public class ServerThread extends Thread {
 
 
 		}
-		objectOutputStream.writeObject(new MacMessage(new FileCorruptMessage(fileCorrupted)));
+		objectOutputStream.writeObject(new MacMessage(new FileCorruptMessage(fileCorrupted )));
 		objectOutputStream.flush();
 		objectOutputStream.reset();
 

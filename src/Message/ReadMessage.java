@@ -7,6 +7,7 @@ public class ReadMessage extends Message {
 	private int pos;
 	private int size;
 	private int rid;
+	private int ts;
 	
 	public ReadMessage(String fileId, int pos, int size, int rid){
 		this.fileId = fileId;

@@ -58,16 +58,16 @@ public class Library {
 
 		byte[] bytesID = generateHash(keyPair.getPublic().toString().getBytes());
 		id = printHexBinary(bytesID);
-		
+
 		//ByzantineRegularRegister Algorithm
 		wts = 0;
 		ackList = new ArrayList<>();
 		rid = 0;
 		readList = new ArrayList<>();
 		//
-		
+
 		FSInitMessage message = new FSInitMessage(id, keyPair.getPublic());
-		
+
 		MacMessage macMessage = new MacMessage(message);
 
 		broadcastMessage(macMessage);
@@ -94,20 +94,20 @@ public class Library {
 				initialPosFirstBlock, missingBlocksId, blankBlock);
 
 		ArrayList<String> arrayOfHashIds = generateArrayOfHashIds();//OK
-		
-		
+
+
 		//ByzantineRegularRegister Algorithm
 		wts++;
 		ackList.clear();
-		byte[] signatureOfArrayIds = signContent(convertArrayListInBytes(arrayOfHashIds));
+		byte[] signatureOfArrayOfHashIds = signContent(convertArrayListInBytes(arrayOfHashIds));
 		byte[] signatureOfWts = signContent(Integer.toString(wts).getBytes());
-		
-		WriteMessage message = new WriteMessage(contentHashBlocks, arrayOfHashIds, signatureOfArrayIds, 
+
+		WriteMessage message = new WriteMessage(contentHashBlocks, arrayOfHashIds, signatureOfArrayOfHashIds, 
 				wts, signatureOfWts,keyPair.getPublic());
 
 		MacMessage macMessage = new MacMessage(message);
-		
-		
+
+
 		broadcastMessage(macMessage);
 
 		for (Connection c : connections) {
@@ -120,50 +120,61 @@ public class Library {
 					try {
 						macMessage = (MacMessage) c.getOis().readObject();
 						fileCorruptMessage = (FileCorruptMessage) macMessage.getMsg();
-						
-						
 
-						if (fileCorruptMessage.isCorrupted() || Arrays.equals(macMessage.generateMac(), macMessage.getMac())) {
-							synchronized (ackList) {
-								ackList.add(false);
-								ackList.notify();
-							}
-							//addWriteResponseToArray(false);
-						} else {
-							// Verifica se a 2ª mensagem que verifica mesmo os HashBlocks está
-							// corrupta
-							
-							MacMessage macMessage2;
 
-							macMessage2 = (MacMessage) c.getOis().readObject();
+						if(wts == fileCorruptMessage.getTs()){
 							
 							
-							FileCorruptMessage hashBlockCorruptMessage;
+							if (fileCorruptMessage.isCorrupted() || !Arrays.equals(macMessage.generateMac(), macMessage.getMac())) {
 
-							hashBlockCorruptMessage = (FileCorruptMessage) macMessage2.getMsg();
-
-							if (!hashBlockCorruptMessage.isCorrupted() || Arrays.equals(macMessage2.getMac(),macMessage2.generateMac()))
-								synchronized (ackList) {
-									ackList.add(true);
-									ackList.notify();
-								}
-								//addWriteResponseToArray(true);
-							else{
+								//System.out.println("arrayequals " + Arrays.equals(macMessage.generateMac(), macMessage.getMac()));
 								synchronized (ackList) {
 									ackList.add(false);
 									ackList.notify();
 								}
 								//addWriteResponseToArray(false);
+							} else {
+								// Verifica se a 2ª mensagem que verifica mesmo os HashBlocks está
+								// corrupta
+
+								MacMessage macMessage2;
+
+								macMessage2 = (MacMessage) c.getOis().readObject();
+
+
+								FileCorruptMessage hashBlockCorruptMessage;
+
+								hashBlockCorruptMessage = (FileCorruptMessage) macMessage2.getMsg();
+
+								if (!hashBlockCorruptMessage.isCorrupted() || Arrays.equals(macMessage2.getMac(),macMessage2.generateMac())){
+									System.out.println(Arrays.equals(macMessage2.getMac(),macMessage2.generateMac()));
+									synchronized (ackList) {
+										ackList.add(true);
+										ackList.notify();
+									}
+								}
+								//addWriteResponseToArray(true);
+								else{
+									synchronized (ackList) {
+										ackList.add(false);
+										ackList.notify();
+									}
+									//addWriteResponseToArray(false);
+								}
 							}
-						}
-						/*synchronized (ackList) {
+							/*synchronized (ackList) {
 							ackList.notify();
 						}*/
+						}
+						else{
+							System.out.println("=== TIMESTAMP ERRADO ===");
+						}
 					} catch (ClassNotFoundException | IOException e1) {
 						e1.printStackTrace();
 					}
 				}
 			}).start();
+
 
 		}
 
@@ -228,7 +239,7 @@ public class Library {
 	private synchronized void addWriteResponseToArray(boolean b){
 		ackList.add(b);
 	}
-	
+
 	private boolean getFinalResponseToWrite(){
 		int trues = 0;
 		int falses = 0;
@@ -238,7 +249,7 @@ public class Library {
 				else falses++;
 			}
 		}
-		
+
 		if(trues > falses) return true;
 		else return false;	
 	}
@@ -278,19 +289,21 @@ public class Library {
 		}
 		return arrayOfHashIds;
 	}
-	
+
 	public int FsRead(String id, int pos, int size) throws IOException, ClassNotFoundException, InterruptedException {
-		
-		
+
+
 		//ByzantineRegularRegister Algorithm
 		rid++;
 		readList.clear();
 		ReadMessage message = new ReadMessage(id, pos, size, rid);
-		
+
 		MacMessage macMessage = new MacMessage(message);
-		
+
 		broadcastMessage(macMessage);
-		
+		//ByzantineRegularRegister Algorithm
+
+
 		for (Connection c : connections) {
 			new Thread(new Runnable() {
 
@@ -307,18 +320,20 @@ public class Library {
 								System.out.println("FILE IS CORRUPTED");
 							}
 						} 
-						
-						ReadResponseMessage readResponse = (ReadResponseMessage) c.getOis().readObject();						
-						/*byte[] originalWts = decipherSignature(readResponse.getSignatureOfTs(), keyPair.getPublic());
+
+						MacMessage macMessage = (MacMessage) c.getOis().readObject();
+
+						ReadResponseMessage readResponse = (ReadResponseMessage) macMessage.getMsg();						
+						byte[] originalWts = decipherSignature(readResponse.getSignatureOfTs(), keyPair.getPublic());
 						byte[] wtsInClear = generateHash(Integer.toString(readResponse.getTs()).getBytes());
-						System.out.println("cibas " + Arrays.equals(originalWts, wtsInClear));*/
-						if(readResponse.getRid() == rid /*&& 
-								Arrays.equals(readResponse.getSignatureOfTs(),signContent(Integer.toString(readResponse.getTs()).getBytes()))*/){
-							
-							
+						System.out.println("cibas " + Arrays.equals(originalWts, wtsInClear));
+						if(readResponse.getRid() == rid  && Arrays.equals(macMessage.getMac(), macMessage.generateMac()) && 
+								Arrays.equals(readResponse.getSignatureOfTs(),signContent(Integer.toString(readResponse.getTs()).getBytes()))){
+
+
 							//----------------ASSINATURA DO FICHEIRO E DO TS NAO SAO VERIFICADAS--------------------------
-							
-							
+
+
 							synchronized (readList) {
 								readList.add(readResponse);
 								readList.notify();
@@ -326,11 +341,20 @@ public class Library {
 						}
 						//FAZER VERIFICACAO DAS ASSINATURAS
 						//ADD TO READLIST SE ASSINATURAS ESTIVEREM OK
-						
-						
-						
+
+
+
 					} catch (ClassNotFoundException | IOException e1) {
 						e1.printStackTrace();
+					} catch (InvalidKeyException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (IllegalBlockSizeException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (BadPaddingException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
 					}
 				}
 			}).start();
@@ -343,17 +367,17 @@ public class Library {
 			}
 		}
 		System.out.println("DEPOIS DO WHILE");
-		
-		
+
+
 		return getFinalReadResponse();
 	}
-	
-	
+
+
 	private int getFinalReadResponse(){
-		
+
 		int finalResponseTs = readList.get(0).getTs();
 		int indexFinalResponse = 0;
-		
+
 		synchronized (readList) {
 			for (int i = 1; i < readList.size(); i++){
 				if(finalResponseTs < readList.get(i).getTs()){
