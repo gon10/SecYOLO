@@ -46,7 +46,7 @@ public class ServerThread extends Thread {
 	}
 
 	public void run(){
-		Message message = null;
+		MacMessage macMessage = null;
 		ArrayList<String> aux;
 		try{
 			cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
@@ -54,37 +54,35 @@ public class ServerThread extends Thread {
 			objectInputStream = new ObjectInputStream(socket.getInputStream());
 			objectOutputStream = new ObjectOutputStream(socket.getOutputStream());
 
-			while((message = (Message)objectInputStream.readObject()) != null){
-				switch (message.getClass().toString()) {
+			while((macMessage = (MacMessage)objectInputStream.readObject()) != null){
+				switch (macMessage.getMsg().getClass().toString()) {
 				case "class Message.FSInitMessage":
 					//System.out.println(blockServer.getMyPort() + ": INIT");
 
-					MacMessage mac = (MacMessage) message;
 
-					FSInitMessage fsInitMessage = (FSInitMessage) mac.getMsg();
+					System.out.println("entrei no fsinit");	
 
-					if(Arrays.equals(fsInitMessage.getBytes(), mac.getBytes())){
+					FSInitMessage fsInitMessage = (FSInitMessage) macMessage.getMsg();
+
+					if(Arrays.equals(macMessage.generateMac(), macMessage.getMac())){
 
 						myId = fsInitMessage.getId();
 						clientPublicKey = fsInitMessage.getPublicKey();
 						PublicKeyBlock publicKeyBlock = new PublicKeyBlock(myId, clientPublicKey);
 						blockServer.addBlockToMap(publicKeyBlock);
-						break;
 					}
 					else{
-						System.out.println("o filipe odeia-me!!!!");
-						System.out.println("Meita para isto fodass!!");
+
 					}
+					break;
+
 
 
 				case "class Message.WriteMessage":
 
 					//WriteMessage writeMessage = (WriteMessage) message;
 					
-					MacMessage macMessage = (MacMessage) message;
-					
 					WriteMessage writeMessage = (WriteMessage) macMessage.getMsg();
-					byte[] writeMessageBytes = writeMessage.getBytes();
 					
 					
 					byte[] originalHash = decipherSignature(writeMessage.getSignatureOfArrayIds(), writeMessage.getPublicKey());
@@ -96,7 +94,9 @@ public class ServerThread extends Thread {
 					//Check the integrity of the ArrayList that contains only the Id's of the HashBlocks
 					//In case of failing the integrity it will send a corrupt File Message with true [arrayList<String>]
 					if(!Arrays.equals(originalHash, newHash) || !Arrays.equals(originalWts, wtsInClear) 
-							|| !Arrays.equals(macMessage.getMac(), writeMessageBytes)){
+							|| !Arrays.equals(macMessage.generateMac(), macMessage.getMac())){
+						
+						System.out.println("entrei no if manhoso");
 						objectOutputStream.writeObject(new FileCorruptMessage(true));
 						objectOutputStream.flush();
 						objectOutputStream.reset();
@@ -134,12 +134,10 @@ public class ServerThread extends Thread {
 				case "class Message.ReadMessage":
 					System.out.println(blockServer.getMyPort() + ": READMESSAGE");
 					//ReadMessage readMessage = (ReadMessage) message;
-					MacMessage macMessage1 = (MacMessage) message;
 
-					ReadMessage readMessage = (ReadMessage) macMessage1.getMsg();
-					byte[] readMessageBytes = readMessage.getBytes();
+					ReadMessage readMessage = (ReadMessage) macMessage.getMsg();
 
-					if(Arrays.equals(macMessage1.getMac(), readMessageBytes)){
+					if(Arrays.equals(macMessage.getMac(), macMessage.generateMac())){
 
 
 						String idToRead = readMessage.getFileId();

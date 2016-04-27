@@ -11,10 +11,10 @@ public class MacMessage extends Message{
 	
 	public MacMessage(Message msg) {
 		this.msg = msg;
-		generateMac();
+		this.mac = generateMac();
 	}
 	
-	public void generateMac(){
+	public byte[] generateMac(){
 		
 		try {
 		     String secret = "secret";
@@ -25,12 +25,12 @@ public class MacMessage extends Message{
 		     SecretKeySpec secret_key = new SecretKeySpec(secret.getBytes(), "HmacSHA256");
 		     sha256_HMAC.init(secret_key);
 
-		     mac = sha256_HMAC.doFinal(message);
+		     return sha256_HMAC.doFinal(message);
 		    }
 		    catch (Exception e){
 		     System.out.println("Error");
 		    }
-		
+		return null;
 	}
 
 
